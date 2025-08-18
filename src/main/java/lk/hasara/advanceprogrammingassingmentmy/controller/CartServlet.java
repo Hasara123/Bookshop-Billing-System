@@ -24,47 +24,54 @@ public class CartServlet extends HttpServlet {
 
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        String action = req.getParameter("action");
         HttpSession session = req.getSession();
-
         List<CartItem> cart = (List<CartItem>) session.getAttribute("cart");
         if (cart == null) cart = new ArrayList<>();
 
+        String action = req.getParameter("action");
         try {
-            if ("add".equals(action)) {
-                int id = Integer.parseInt(req.getParameter("itemId"));
-                int qty = Integer.parseInt(req.getParameter("quantity"));
-                Item item = itemDAO.getItemById(id);
-                if (item != null) {
-                    boolean found = false;
+            int itemId;
+            int quantity;
+            Item item;
+
+            switch (action) {
+                case "add":
+                    itemId = Integer.parseInt(req.getParameter("itemId"));
+                    quantity = Integer.parseInt(req.getParameter("quantity"));
+                    item = itemDAO.getItemById(itemId);
+                    if (item != null) {
+                        boolean found = false;
+                        for (CartItem ci : cart) {
+                            if (ci.getItem().getId() == itemId) {
+                                ci.setQuantity(ci.getQuantity() + quantity);
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (!found) cart.add(new CartItem(item, quantity));
+                    }
+                    break;
+
+                case "remove":
+                    itemId = Integer.parseInt(req.getParameter("itemId"));
+                    cart.removeIf(ci -> ci.getItem().getId() == itemId);
+                    break;
+
+                case "update":
+                    itemId = Integer.parseInt(req.getParameter("itemId"));
+                    quantity = Integer.parseInt(req.getParameter("quantity"));
                     for (CartItem ci : cart) {
-                        if (ci.getItem().getId() == id) {
-                            ci.setQuantity(ci.getQuantity() + qty);
-                            found = true;
+                        if (ci.getItem().getId() == itemId) {
+                            ci.setQuantity(quantity);
                             break;
                         }
                     }
-                    if (!found) cart.add(new CartItem(item, qty));
-                }
-            } else if ("remove".equals(action)) {
-                int id = Integer.parseInt(req.getParameter("itemId"));
-                Iterator<CartItem> it = cart.iterator();
-                while (it.hasNext()) {
-                    if (it.next().getItem().getId() == id) it.remove();
-                }
-            } else if ("update".equals(action)) {
-                // update quantities: expects itemId and quantity parameters (single item)
-                int id = Integer.parseInt(req.getParameter("itemId"));
-                int qty = Integer.parseInt(req.getParameter("quantity"));
-                for (CartItem ci : cart) {
-                    if (ci.getItem().getId() == id) {
-                        ci.setQuantity(qty);
-                        break;
-                    }
-                }
+                    break;
             }
+
             session.setAttribute("cart", cart);
             resp.sendRedirect(req.getHeader("referer") != null ? req.getHeader("referer") : "catalog");
+
         } catch (NumberFormatException | SQLException e) {
             throw new ServletException(e);
         }
