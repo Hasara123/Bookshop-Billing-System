@@ -18,6 +18,7 @@ import java.util.List;
 import com.twilio.Twilio;
 import com.twilio.rest.api.v2010.account.Message;
 import com.twilio.type.PhoneNumber;
+import lk.hasara.advanceprogrammingassingmentmy.util.SMSUtil;
 
 @WebServlet("/checkout")
 public class CheckoutServlet extends HttpServlet {
@@ -82,11 +83,13 @@ public class CheckoutServlet extends HttpServlet {
             if (customer != null) {
                 String phone = customer.getPhone();
                 if (phone.startsWith("0")) phone = "+94" + phone.substring(1);
-                Twilio.init("AC271e1bbf36d0a26c369fc3c76e0c3687", "c3af11c6ae3c2175460ff75c0f8168ff");
-                Message.creator(new PhoneNumber(phone), new PhoneNumber("+15137173198"),
+
+                Twilio.init(SMSUtil.ACCOUNT_SID, SMSUtil.AUTH_TOKEN);
+                Message.creator(new PhoneNumber(phone), new PhoneNumber(SMSUtil.FROM_NUMBER),
                         "Hello " + customer.getName() + ", your order of Rs." + total +
                                 " has been received. Payment: " + paymentMethod
                 ).create();
+
             }
 
             // 6️⃣ Clear cart and set success message
