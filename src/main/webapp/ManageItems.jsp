@@ -1,55 +1,95 @@
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <title>Manage Items - Pahana Edu</title>
     <link rel="stylesheet" href="component/style.css">
+    <style>
+        .alert-success {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .alert-error {
+            background-color: #f44336;
+            color: white;
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            text-align: center;
+        }
+
+        .update, .delete {
+            padding: 5px 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .update { background-color: #4CAF50; color: white; }
+        .update:hover { background-color: #3e8e41; }
+        .delete { background-color: #f44336; color: white; }
+        .delete:hover { background-color: #da190b; }
+
+        form.inline-edit input[type="text"], form.inline-edit input[type="number"] {
+            width: 90px;
+            padding: 3px;
+            margin-right: 5px;
+        }
+
+        form.inline-edit button { padding: 3px 6px; margin-left: 3px; }
+        .btn-primary {
+            background-color: #0077cc;
+            color: white;
+            padding: 8px 15px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .btn-primary:hover {
+            background-color: #005fa3;
+        }
+
+    </style>
 </head>
 <body>
 
-<!-- Sidebar -->
 <%@ include file="component/sidebar.jsp" %>
 
 <div class="main-container">
     <div class="content-wrapper">
         <h1>Manage Items</h1>
-        <p>Monitor, update, and control all book inventory from a single dashboard. Keep your catalog up to date.</p>
 
-        <form action="items" method="get" id="filterForm">
-            <input type="text" name="search" placeholder="🔍 Search books..." value="${param.search}" />
+        <!-- Flash messages -->
+        <c:if test="${not empty sessionScope.successMessage}">
+            <div class="alert-success">${sessionScope.successMessage}</div>
+            <c:remove var="successMessage" scope="session"/>
+        </c:if>
 
-            <select name="category" onchange="document.getElementById('filterForm').submit();">
-                <option value="" <c:if test="${empty param.category}">selected</c:if>>All Categories</option>
-                <c:forEach var="cat" items="${categories}">
-                    <option value="${cat}" <c:if test="${param.category == cat}">selected</c:if>>${cat}</option>
-                </c:forEach>
-            </select>
+        <c:if test="${not empty sessionScope.errorMessage}">
+            <div class="alert-error">${sessionScope.errorMessage}</div>
+            <c:remove var="errorMessage" scope="session"/>
+        </c:if>
 
-            <input type="hidden" name="action" value="search" />
-            <button type="submit">Search</button>
-        </form>
-
-
-        <!-- Action Bar -->
-        <div class="action-bar">
-            <div class="right">
-                <button class="export" type="button">Export</button>
-                <a href="add-item.jsp"><button type="button" class="add-user">+ Add Item</button></a>
-            </div>
-        </div>
+        <!-- Add Item button -->
+        <a href="add-item.jsp"><button class="btn-primary">➕ Add Item</button></a>
 
         <!-- Item Table -->
-        <table class="user-table">
+        <table class="user-table" style="margin-top:20px;">
             <thead>
             <tr>
                 <th>Title</th>
                 <th>Author</th>
                 <th>ISBN</th>
                 <th>Category</th>
-                <th>Price (Rs.)</th>
+                <th>Stock</th>
+                <th>Price</th>
                 <th>Actions</th>
             </tr>
             </thead>
@@ -60,14 +100,28 @@
                     <td>${item.author}</td>
                     <td>${item.isbn}</td>
                     <td>${item.category}</td>
+                    <td>${item.stock}</td>
                     <td>${item.price}</td>
                     <td>
-                        <a href="items?action=edit&id=${item.id}">
-                            <button class="update" type="button">Update</button>
+                        <!-- Edit / Delete buttons -->
+                        <button type="button" class="update" onclick="showEdit(${item.id})">Edit</button>
+                        <a href="items?action=delete&id=${item.id}" onclick="return confirm('Delete this item?');">
+                            <button type="button" class="delete">Delete</button>
                         </a>
-                        <a href="items?action=delete&id=${item.id}" onclick="return confirm('Are you sure you want to delete this item?');">
-                            <button class="delete" type="button">Delete</button>
-                        </a>
+
+                        <!-- Inline edit form -->
+                        <form id="edit-form-${item.id}" class="inline-edit" action="items" method="post" style="display:none;">
+                            <input type="hidden" name="action" value="update" />
+                            <input type="hidden" name="id" value="${item.id}" />
+                            <input type="text" name="title" value="${item.title}" required />
+                            <input type="text" name="author" value="${item.author}" required />
+                            <input type="text" name="isbn" value="${item.isbn}" required readonly />
+                            <input type="text" name="category" value="${item.category}" required />
+                            <input type="number" name="stock" value="${item.stock}" required />
+                            <input type="number" step="0.01" name="price" value="${item.price}" required />
+                            <button type="submit" class="update">Save</button>
+                            <button type="button" class="delete" onclick="hideEdit(${item.id})">Cancel</button>
+                        </form>
                     </td>
                 </tr>
             </c:forEach>
@@ -77,12 +131,14 @@
 </div>
 
 <script>
-    // ✅ Auto-hide alerts after 3 seconds
-    setTimeout(() => {
-        const alerts = document.querySelectorAll(".alert");
-        alerts.forEach(alert => alert.style.display = "none");
-    }, 3000);
-</script>
+    function showEdit(id) { document.getElementById('edit-form-' + id).style.display = 'block'; }
+    function hideEdit(id) { document.getElementById('edit-form-' + id).style.display = 'none'; }
 
+    // Auto-hide messages
+    setTimeout(() => {
+        const alerts = document.querySelectorAll(".alert-success, .alert-error");
+        alerts.forEach(a => a.style.display = "none");
+    }, 4000);
+</script>
 </body>
 </html>
