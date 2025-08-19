@@ -23,28 +23,39 @@ public class StaffServlet extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 
+        HttpSession session = request.getSession(true);
         String action = request.getParameter("action");
 
-        if ("search".equalsIgnoreCase(action)) {
-            String keyword = request.getParameter("keyword");
-            List<User> staffList = dao.getAllStaff(keyword);
-            request.setAttribute("staffList", staffList);
-            request.getRequestDispatcher("staff.jsp").forward(request, response);
+        try {
+            if ("search".equalsIgnoreCase(action)) {
+                String keyword = request.getParameter("keyword");
+                List<User> staffList = dao.getAllStaff(keyword);
+                request.setAttribute("staffList", staffList);
 
-        } else if ("delete".equalsIgnoreCase(action)) {
-            int id = Integer.parseInt(request.getParameter("id"));
-            boolean deleted = dao.deleteStaff(id);
-            request.setAttribute("message", deleted ? "Staff deleted successfully" : "Failed to delete staff");
-            request.setAttribute("msgType", deleted ? "success" : "error");
-            List<User> staffList = dao.getAllStaff(null);
-            request.setAttribute("staffList", staffList);
-            request.getRequestDispatcher("staff.jsp").forward(request, response);
+            } else if ("delete".equalsIgnoreCase(action)) {
+                int id = Integer.parseInt(request.getParameter("id"));
+                boolean deleted = dao.deleteStaff(id);
 
-        } else {
+                // Set flash message
+                session.setAttribute("message", deleted ? "Staff deleted successfully" : "Failed to delete staff");
+                session.setAttribute("msgType", deleted ? "success" : "error");
+
+                // Redirect to show message immediately
+                response.sendRedirect("staff");
+                return;
+            }
+
             // Default: list all staff
             List<User> staffList = dao.getAllStaff(null);
             request.setAttribute("staffList", staffList);
+
+            // Forward to JSP
             request.getRequestDispatcher("staff.jsp").forward(request, response);
+
+        } catch (Exception e) {
+            session.setAttribute("message", "Error: " + e.getMessage());
+            session.setAttribute("msgType", "error");
+            response.sendRedirect("staff");
         }
     }
 
@@ -52,47 +63,53 @@ public class StaffServlet extends HttpServlet {
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
 
+        HttpSession session = request.getSession(true);
         String action = request.getParameter("action");
 
-        if ("add".equalsIgnoreCase(action)) {
-            String email = request.getParameter("email");
-            String password = request.getParameter("password");
-            String role = request.getParameter("role");
+        try {
+            if ("add".equalsIgnoreCase(action)) {
+                String email = request.getParameter("email").trim();
+                String password = request.getParameter("password").trim();
+                String role = request.getParameter("role").trim();
 
-            User user = new User();
-            user.setEmail(email);
-            user.setPassword(password);
-            user.setRole(role);
+                User user = new User();
+                user.setEmail(email);
+                user.setPassword(password);
+                user.setRole(role);
 
-            boolean added = dao.addStaff(user);
-            if (added) {
-                response.sendRedirect("staff?message=Staff+added+successfully&msgType=success");
-            } else {
-                request.setAttribute("message", "Failed to add staff");
-                request.setAttribute("msgType", "error");
-                request.getRequestDispatcher("add-staff.jsp").forward(request, response);
+                boolean added = dao.addStaff(user);
+                session.setAttribute("message", added ? "Staff added successfully" : "Failed to add staff");
+                session.setAttribute("msgType", added ? "success" : "error");
+
+                response.sendRedirect("staff");
+
+            } else if ("update".equalsIgnoreCase(action)) {
+                int id = Integer.parseInt(request.getParameter("id"));
+                String email = request.getParameter("email").trim();
+                String password = request.getParameter("password").trim();
+                String role = request.getParameter("role").trim();
+
+                User user = new User();
+                user.setId(id);
+                user.setEmail(email);
+                // Only update password if provided
+                if (!password.isEmpty()) {
+                    user.setPassword(password);
+                } else {
+                    user.setPassword(dao.getStaffById(id).getPassword());
+                }
+                user.setRole(role);
+
+                boolean updated = dao.updateStaff(user);
+                session.setAttribute("message", updated ? "Staff updated successfully" : "Failed to update staff");
+                session.setAttribute("msgType", updated ? "success" : "error");
+
+                response.sendRedirect("staff");
             }
-
-        } else if ("update".equalsIgnoreCase(action)) {
-            int id = Integer.parseInt(request.getParameter("id"));
-            String email = request.getParameter("email");
-            String password = request.getParameter("password"); // can be blank
-            String role = request.getParameter("role");
-
-            User user = new User();
-            user.setId(id);
-            user.setEmail(email);
-            user.setPassword(password);
-            user.setRole(role);
-
-            boolean updated = dao.updateStaff(user);
-            if (updated) {
-                response.sendRedirect("staff?message=Staff+updated+successfully&msgType=success");
-            } else {
-                request.setAttribute("message", "Failed to update staff");
-                request.setAttribute("msgType", "error");
-                doGet(request, response); // reload list with error
-            }
+        } catch (Exception e) {
+            session.setAttribute("message", "Error: " + e.getMessage());
+            session.setAttribute("msgType", "error");
+            response.sendRedirect("staff");
         }
     }
 }
