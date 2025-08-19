@@ -148,14 +148,59 @@ public class ItemDAO {
 
     // Map result set row to Item object
     private Item mapRowToItem(ResultSet rs) throws SQLException {
-        return new Item(
-                rs.getInt("id"),
-                rs.getString("title"),
-                rs.getString("author"),
-                rs.getString("isbn"),
-                rs.getString("category"),
-                rs.getDouble("price"),
-                rs.getInt("stock")
-        );
+        Item item = new Item();
+        item.setId(rs.getInt("id"));
+        item.setTitle(rs.getString("title"));
+        item.setAuthor(rs.getString("author"));
+        item.setIsbn(rs.getString("isbn"));
+        item.setCategory(rs.getString("category"));
+        item.setPrice(rs.getDouble("price"));
+        item.setStock(rs.getInt("stock"));
+        return item;
+    }
+
+    // Get low stock items (threshold)
+    public List<Item> getLowStockItems(int threshold) throws SQLException {
+        String sql = "SELECT id, title, stock FROM items WHERE stock <= ? ORDER BY stock ASC";
+        List<Item> list = new ArrayList<>();
+        try (Connection conn = DBUtil.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, threshold);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Item item = new Item();
+                    item.setId(rs.getInt("id"));
+                    item.setTitle(rs.getString("title"));
+                    item.setStock(rs.getInt("stock"));
+                    list.add(item);
+                }
+            }
+        }
+        return list;
+    }
+
+    // Get most selling books (top N)
+    public List<Item> getMostSellingBooks(int limit) throws SQLException {
+        String sql = "SELECT i.id, i.title, SUM(bi.quantity) AS totalSold " +
+                "FROM bill_items bi " +
+                "JOIN items i ON bi.book_id = i.id " +
+                "GROUP BY i.id, i.title " +
+                "ORDER BY totalSold DESC " +
+                "LIMIT ?";
+        List<Item> list = new ArrayList<>();
+        try (Connection conn = DBUtil.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, limit);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    Item item = new Item();
+                    item.setId(rs.getInt("id"));
+                    item.setTitle(rs.getString("title"));
+                    item.setTotalSold(rs.getInt("totalSold")); // Ensure your Item model has totalSold field
+                    list.add(item);
+                }
+            }
+        }
+        return list;
     }
 }

@@ -3,6 +3,7 @@ package lk.hasara.advanceprogrammingassingmentmy.controller.command;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 import lk.hasara.advanceprogrammingassingmentmy.dao.CustomerDAO;
 import lk.hasara.advanceprogrammingassingmentmy.model.Customer;
 
@@ -20,6 +21,8 @@ public class AddCustomerCommand implements Command {
     public void execute(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException, SQLException {
 
+        HttpSession session = request.getSession();
+
         if ("GET".equalsIgnoreCase(request.getMethod())) {
             // Show AddCustomer form
             request.getRequestDispatcher("add-customer.jsp").forward(request, response);
@@ -30,9 +33,19 @@ public class AddCustomerCommand implements Command {
             String address = request.getParameter("address");
             String phone = request.getParameter("phone");
 
-            Customer customer = new Customer(name, accountNo, address, phone);
-            customerDAO.addCustomer(customer);
-            response.sendRedirect("customers?action=list");
+            try {
+                Customer customer = new Customer(name, accountNo, address, phone);
+                customerDAO.addCustomer(customer);
+
+                // Set success message in session
+                session.setAttribute("successMessage", "Customer " + name + " added successfully!");
+                response.sendRedirect("customers?action=list");
+
+            } catch (SQLException e) {
+                // Set error message in request scope
+                request.setAttribute("errorMessage", "Error adding customer: " + e.getMessage());
+                request.getRequestDispatcher("add-customer.jsp").forward(request, response);
+            }
         }
     }
 }

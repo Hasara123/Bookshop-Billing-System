@@ -18,7 +18,14 @@ public class DeleteCustomerCommand implements Command {
     public void execute(HttpServletRequest request, HttpServletResponse response)
             throws IOException, SQLException {
         String id = request.getParameter("id");
+
+        // Delete customer
         customerDAO.deleteCustomer(id);
+
+        // Add flash message in session
+        request.getSession().setAttribute("successMessage", "Customer deleted successfully.");
+
+        // Redirect to customer listing
         response.sendRedirect("customers?action=list");
     }
 }

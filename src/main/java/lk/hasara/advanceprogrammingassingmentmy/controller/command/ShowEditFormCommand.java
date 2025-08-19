@@ -19,9 +19,21 @@ public class ShowEditFormCommand implements Command {
     @Override
     public void execute(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException, SQLException {
+
         String accountNo = request.getParameter("accountNo");
         Customer customer = customerDAO.getCustomerByAccountNo(accountNo);
         request.setAttribute("customer", customer);
-        request.getRequestDispatcher("edit-customer.jsp").forward(request, response);
+
+        // Optional: Move flash messages from session to request so JSP can display them
+        if (request.getSession().getAttribute("successMessage") != null) {
+            request.setAttribute("successMessage", request.getSession().getAttribute("successMessage"));
+            request.getSession().removeAttribute("successMessage");
+        }
+        if (request.getSession().getAttribute("errorMessage") != null) {
+            request.setAttribute("errorMessage", request.getSession().getAttribute("errorMessage"));
+            request.getSession().removeAttribute("errorMessage");
+        }
+
+        request.getRequestDispatcher("ManageCustomers.jsp").forward(request, response);
     }
 }
