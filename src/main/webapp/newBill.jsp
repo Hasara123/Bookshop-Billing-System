@@ -3,26 +3,15 @@
 <%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
 <%@ page import="lk.hasara.advanceprogrammingassingmentmy.model.CartItem" %>
 
-
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>New Bill</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
-</head>
-
-<head>
-    <title>New Bill</title>
+    <meta charset="UTF-8">
+    <title>Checkout - Pahana Edu</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
     <style>
-        .content-wrapper {
-            margin-left: 250px;
-        }
-        @media (max-width: 768px) {
-            .content-wrapper {
-                margin-left: 0;
-            }
-        }
+        .content-wrapper { margin-left: 250px; }
+        @media (max-width: 768px) { .content-wrapper { margin-left: 0; } }
     </style>
 </head>
 <body class="bg-light">
@@ -32,18 +21,19 @@
     <div class="container-fluid mt-4">
         <h2>Checkout</h2>
 
-        <c:if test="${not empty errorMessage}">
-            <div class="alert alert-danger">${errorMessage}</div>
-        </c:if>
+        <!-- Success & Error Messages -->
         <c:if test="${not empty message}">
             <div class="alert alert-success">${message}</div>
+        </c:if>
+        <c:if test="${not empty errorMessage}">
+            <div class="alert alert-danger">${errorMessage}</div>
         </c:if>
 
         <form action="checkout" method="post">
             <div class="mb-3">
                 <label>Customer Account No (optional)</label>
-                <input type="text" name="accountNo" class="form-control" />
-                <small>If customer not registered, <a href="add-customer.jsp">add customer</a></small>
+                <input type="text" name="accountNo" class="form-control" value="${param.accountNo}"/>
+                <small>If customer not registered, <a href="AddCustomer.jsp">add customer</a></small>
             </div>
 
             <h4>Cart Summary</h4>
@@ -53,7 +43,7 @@
                     <tr><th>Title</th><th>Qty</th><th>Price</th><th>Total</th></tr>
                     </thead>
                     <tbody>
-                    <c:set var="grand" value="0" />
+                    <c:set var="grand" value="0"/>
                     <c:forEach var="ci" items="${sessionScope.cart}">
                         <tr>
                             <td>${ci.item.title}</td>
@@ -61,7 +51,7 @@
                             <td>Rs. ${ci.item.price}</td>
                             <td>Rs. ${ci.totalPrice}</td>
                         </tr>
-                        <c:set var="grand" value="${grand + ci.totalPrice}" />
+                        <c:set var="grand" value="${grand + ci.totalPrice}"/>
                     </c:forEach>
                     </tbody>
                     <tfoot>
@@ -95,6 +85,29 @@
     </div>
 </div>
 
-</body>
+<!-- SMS Success Alert -->
+<div class="position-fixed bottom-0 end-0 p-3" style="z-index: 11; min-width: 250px;">
+    <c:if test="${not empty smsMessage}">
+        <div id="smsAlert" class="alert alert-success alert-dismissible fade show shadow" role="alert">
+                ${smsMessage}
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    </c:if>
+</div>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+    // Auto hide the SMS alert after 4 seconds
+    window.addEventListener('DOMContentLoaded', () => {
+        const smsAlert = document.getElementById('smsAlert');
+        if (smsAlert) {
+            setTimeout(() => {
+                let alert = new bootstrap.Alert(smsAlert);
+                alert.close();
+            }, 4000); // 4 seconds
+        }
+    });
+</script>
+
+</body>
 </html>

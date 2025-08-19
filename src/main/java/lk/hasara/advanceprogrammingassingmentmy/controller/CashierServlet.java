@@ -1,79 +1,59 @@
-//package lk.hasara.advanceprogrammingassingmentmy.controller;
-//
-//import jakarta.servlet.ServletException;
-//import jakarta.servlet.annotation.WebServlet;
-//import jakarta.servlet.http.*;
-//import lk.hasara.advanceprogrammingassingmentmy.dao.BillDAO;
-//import lk.hasara.advanceprogrammingassingmentmy.model.Bill;
-//
-//import java.io.IOException;
-//import java.util.List;
-//
-//@WebServlet("/CashierServlet")
-//public class CashierServlet extends HttpServlet {
-//
-//    private BillDAO billDAO = new BillDAO();
-//
-//    @Override
-//    protected void doGet(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-//        // Get logged-in user email from session
-//        String cashierEmail = (String) request.getSession().getAttribute("user");
-//        String role = (String) request.getSession().getAttribute("role");
-//
-//        if (cashierEmail == null || role == null || !role.equalsIgnoreCase("CASHIER")) {
-//            response.sendRedirect("Login.jsp");
-//            return;
-//        }
-//
-//        // Fetch bills created by this cashier
-//        List<Bill> bills = billDAO.getBillsByCashier(cashierEmail);
-//
-//        // Set bills in request scope to display in JSP
-//        request.setAttribute("bills", bills);
-//
-//        // Forward to JSP page
-//        request.getRequestDispatcher("CashierDashboard.jsp").forward(request, response);
-//    }
-//
-//    @Override
-//    protected void doPost(HttpServletRequest request, HttpServletResponse response) throws ServletException, IOException {
-//        String action = request.getParameter("action");
-//        if ("addBill".equals(action)) {
-//            addBill(request, response);
-//        } else {
-//            response.sendRedirect("CashierServlet"); // reload to refresh data
-//        }
-//    }
-//
-//    private void addBill(HttpServletRequest request, HttpServletResponse response) throws IOException, ServletException {
-//        String accountNo = request.getParameter("accountNo");
-//        int unitsConsumed = Integer.parseInt(request.getParameter("unitsConsumed"));
-//        String cashierEmail = (String) request.getSession().getAttribute("user");
-//
-//        // Calculate amount (same logic as billing)
-//        double amount = 0;
-//        if (unitsConsumed <= 50) {
-//            amount = unitsConsumed * 5;
-//        } else if (unitsConsumed <= 100) {
-//            amount = 50 * 5 + (unitsConsumed - 50) * 7;
-//        } else {
-//            amount = 50 * 5 + 50 * 7 + (unitsConsumed - 100) * 10;
-//        }
-//
-//        Bill bill = new Bill();
-//        bill.setAccountNo(accountNo);
-//        bill.setUnitsConsumed(unitsConsumed);
-//        bill.setTotalAmount(amount);
-//        bill.setCashierEmail(cashierEmail);
-//
-//        boolean success = billDAO.addBill(bill);
-//        if (success) {
-//            request.getSession().setAttribute("message", "Bill added successfully.");
-//        } else {
-//            request.getSession().setAttribute("message", "Failed to add bill.");
-//        }
-//
-//        // Redirect to GET method to show updated bill list
-//        response.sendRedirect("CashierServlet");
-//    }
-//}
+package lk.hasara.advanceprogrammingassingmentmy.controller;
+
+import jakarta.servlet.ServletException;
+import jakarta.servlet.annotation.WebServlet;
+import jakarta.servlet.http.HttpServlet;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import lk.hasara.advanceprogrammingassingmentmy.dao.BillDAO;
+import lk.hasara.advanceprogrammingassingmentmy.dao.ItemDAO;
+import java.io.IOException;
+import java.sql.SQLException;
+import java.util.ArrayList;
+
+@WebServlet("/CashierDashboard")
+public class CashierServlet extends HttpServlet {
+    protected void doGet(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
+
+        BillDAO billDAO = new BillDAO();
+        ItemDAO itemDAO = new ItemDAO();
+
+        try {
+            // Fetch data
+            double totalSales = billDAO.getTotalSalesThisMonth();
+            int totalBills = billDAO.getTotalBills();
+            int customersServed = billDAO.getCustomersServedThisMonth();
+            var recentBills = billDAO.getRecentBills(5);
+            var lowStockItems = itemDAO.getLowStockItems(5);
+            var mostSellingBooks = itemDAO.getMostSellingBooks(5);
+            var monthlyRevenue = billDAO.getMonthlyRevenue(6);
+
+            // Debug logging
+            System.out.println("=== Dashboard Data ===");
+            System.out.println("Total Sales: " + totalSales);
+            System.out.println("Total Bills: " + totalBills);
+            System.out.println("Customers Served: " + customersServed);
+            System.out.println("Recent Bills count: " + (recentBills != null ? recentBills.size() : 0));
+            System.out.println("Low Stock Items count: " + (lowStockItems != null ? lowStockItems.size() : 0));
+            System.out.println("Most Selling Books count: " + (mostSellingBooks != null ? mostSellingBooks.size() : 0));
+            System.out.println("Monthly Revenue: " + monthlyRevenue);
+
+            // Set attributes for JSP
+            request.setAttribute("totalSales", totalSales);
+            request.setAttribute("totalBills", totalBills);
+            request.setAttribute("customersServed", customersServed);
+            request.setAttribute("recentBills", recentBills != null ? recentBills : new ArrayList<>());
+            request.setAttribute("lowStockItems", lowStockItems != null ? lowStockItems : new ArrayList<>());
+            request.setAttribute("mostSellingBooks", mostSellingBooks != null ? mostSellingBooks : new ArrayList<>());
+            request.setAttribute("monthlyRevenue", monthlyRevenue != null ? monthlyRevenue : new java.util.HashMap<>());
+
+        } catch (SQLException e) {
+            e.printStackTrace();
+            throw new RuntimeException(e);
+        }
+
+        // Forward to JSP
+        request.getRequestDispatcher("CashierDashboard.jsp").forward(request, response);
+    }
+}
