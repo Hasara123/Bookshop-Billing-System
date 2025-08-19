@@ -7,6 +7,41 @@
     <meta charset="UTF-8" />
     <title>Manage Customers - Pahana Edu</title>
     <link rel="stylesheet" href="component/style.css" />
+    <style>
+        /* Flash messages */
+        .alert-success {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .alert-error {
+            background-color: #f44336;
+            color: white;
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 5px;
+            font-weight: bold;
+            text-align: center;
+        }
+
+        .update, .delete {
+            padding: 5px 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .update { background-color: #4CAF50; color: white; }
+        .update:hover { background-color: #3e8e41; }
+
+        .delete { background-color: #f44336; color: white; }
+        .delete:hover { background-color: #da190b; }
+    </style>
 </head>
 <body>
 
@@ -17,34 +52,42 @@
         <h1>Customer Management</h1>
         <p>Manage all customers. Add, update, delete, and search records.</p>
 
-        <!-- Alert messages -->
-        <c:if test="${not empty message}">
-            <div class="alert ${msgType == 'success' ? 'success' : 'error'}">${message}</div>
+        <!-- Flash messages -->
+        <c:if test="${not empty requestScope.successMessage}">
+            <div class="alert-success">${requestScope.successMessage}</div>
+        </c:if>
+        <c:if test="${not empty sessionScope.successMessage}">
+            <div class="alert-success">${sessionScope.successMessage}</div>
+            <c:remove var="successMessage" scope="session"/>
+        </c:if>
+        <c:if test="${not empty requestScope.errorMessage}">
+            <div class="alert-error">${requestScope.errorMessage}</div>
+        </c:if>
+        <c:if test="${not empty sessionScope.errorMessage}">
+            <div class="alert-error">${sessionScope.errorMessage}</div>
+            <c:remove var="errorMessage" scope="session"/>
         </c:if>
 
-        <!-- Add Customer button/link -->
-        <a href="add-customer.jsp"><button type="button" class="btn">Add Customer</button></a>
-
+        <!-- Add Customer button -->
+        <a href="add-customer.jsp">
+            <button type="button" class="btn btn-primary">➕ Add Customer</button>
+        </a>
 
         <!-- Search form -->
-        <div style="margin-top:12px; display:flex; justify-content:space-between; align-items:center;">
-            <form action="customers" method="get">
-                <input type="hidden" name="action" value="search" />
-                <input type="text" name="keyword" placeholder="Search..." value="${param.keyword}" />
-                <button type="submit">Search</button>
-            </form>
-
-            <div>
-                <a href="customers"><button type="button" class="btn ghost">Reset</button></a>
-            </div>
-        </div>
+        <form action="customers" method="get" style="margin-top:15px; display:flex; gap:10px; align-items:center;">
+            <input type="hidden" name="action" value="search" />
+            <input type="text" name="keyword" placeholder="Search..." value="${param.keyword}" />
+            <button type="submit">Search</button>
+            <a href="customers"><button type="button" class="btn ghost">Reset</button></a>
+        </form>
 
         <!-- Customer table -->
-        <table class="user-table" aria-label="Customer list" style="margin-top:20px;">
+        <table class="user-table" style="margin-top:20px;">
             <thead>
             <tr>
                 <th>ID</th>
                 <th>Name</th>
+                <th>Account No</th>
                 <th>Address</th>
                 <th>Phone</th>
                 <th>Actions</th>
@@ -57,6 +100,7 @@
                         <tr>
                             <td>${c.id}</td>
                             <td>${c.name}</td>
+                            <td>${c.accountNo}</td>
                             <td>${c.address}</td>
                             <td>${c.phone}</td>
                             <td>
@@ -64,17 +108,16 @@
                                 <button type="button" class="update" onclick="showEdit(${c.id})">Edit</button>
 
                                 <!-- Delete button -->
-                                <a href="customers?action=delete&id=${c.id}" onclick="return confirm('Delete this customer?');">
+                                <a href="customers?action=delete&accountNo=${c.accountNo}" onclick="return confirm('Delete this customer?');">
                                     <button type="button" class="delete">Delete</button>
                                 </a>
 
-
-                                <!-- Inline edit form hidden by default -->
+                                <!-- Inline edit form -->
                                 <form id="edit-form-${c.id}" action="customers" method="post" style="display:none; margin-top:8px;">
                                     <input type="hidden" name="action" value="update" />
                                     <input type="hidden" name="id" value="${c.id}" />
                                     <input type="text" name="name" value="${c.name}" required />
-                                    <input type="text" name="accountNo" value="${c.accountNo}" required readonly />
+                                    <input type="text" name="accountNo" value="${c.accountNo}" readonly required />
                                     <input type="text" name="address" value="${c.address}" required />
                                     <input type="text" name="phone" value="${c.phone}" required />
                                     <button type="submit" class="btn-small btn">Save</button>
@@ -86,7 +129,7 @@
                 </c:when>
                 <c:otherwise>
                     <tr>
-                        <td colspan="5" style="text-align:center; padding:20px;">No customers found.</td>
+                        <td colspan="6" style="text-align:center; padding:20px;">No customers found.</td>
                     </tr>
                 </c:otherwise>
             </c:choose>
@@ -103,10 +146,9 @@
         document.getElementById('edit-form-' + id).style.display = 'none';
     }
 
-    // Auto-hide alerts after 4 seconds
+    // Auto-hide flash messages
     setTimeout(() => {
-        const alerts = document.querySelectorAll('.alert');
-        alerts.forEach(alert => alert.style.display = 'none');
+        document.querySelectorAll('.alert-success, .alert-error').forEach(el => el.style.display='none');
     }, 4000);
 </script>
 

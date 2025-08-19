@@ -2,95 +2,107 @@ package lk.hasara.advanceprogrammingassingmentmy.controller;
 
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
-import jakarta.servlet.http.HttpServlet;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.*;
 import lk.hasara.advanceprogrammingassingmentmy.dao.BillDAO;
 import lk.hasara.advanceprogrammingassingmentmy.dao.CustomerDAO;
 import lk.hasara.advanceprogrammingassingmentmy.model.Bill;
 import lk.hasara.advanceprogrammingassingmentmy.model.BillItem;
 import lk.hasara.advanceprogrammingassingmentmy.model.CartItem;
+import lk.hasara.advanceprogrammingassingmentmy.model.Customer;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
+
+import com.twilio.Twilio;
+import com.twilio.rest.api.v2010.account.Message;
+import com.twilio.type.PhoneNumber;
+import lk.hasara.advanceprogrammingassingmentmy.util.SMSUtil;
 
 @WebServlet("/checkout")
 public class CheckoutServlet extends HttpServlet {
 
-    private BillDAO billDAO = new BillDAO();
-    private CustomerDAO customerDAO = new CustomerDAO();
+    private CustomerDAO customerDAO;
+    private BillDAO billDAO;
 
     @Override
-    protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
-        String accountNo = req.getParameter("accountNo");
-        String paymentMethod = req.getParameter("paymentMethod");
+    public void init() {
+        customerDAO = new CustomerDAO();
+        billDAO = new BillDAO();
+    }
 
-        // Get cart from session
-        List<CartItem> cart = (List<CartItem>) req.getSession().getAttribute("cart");
+    @Override
+    protected void doPost(HttpServletRequest request, HttpServletResponse response)
+            throws ServletException, IOException {
 
-        if (cart == null || cart.isEmpty()) {
-            req.setAttribute("errorMessage", "Cart is empty! Please add items.");
-            req.getRequestDispatcher("newBill.jsp").forward(req, resp);
-            return;
-        }
+        HttpSession session = request.getSession();
+        String accountNo = request.getParameter("accountNo");
+        String paymentMethod = request.getParameter("paymentMethod");
 
         try {
-            // Validate customer account number if provided
-            if (accountNo != null && !accountNo.trim().isEmpty()) {
-                boolean registered = customerDAO.isCustomerRegistered(accountNo.trim());
-                if (!registered) {
-                    req.setAttribute("errorMessage", "Customer account number not registered! Please add customer first.");
-                    req.getRequestDispatcher("newBill.jsp").forward(req, resp);
-                    return;
-                }
-            } else {
-                accountNo = null; // Treat empty input as null
+            // 1️⃣ Get cart from session
+            List<CartItem> cart = (List<CartItem>) session.getAttribute("cart");
+            if (cart == null || cart.isEmpty()) {
+                session.setAttribute("errorMessage", "Your cart is empty.");
+                response.sendRedirect("newBill.jsp");
+                return;
             }
 
-            // Calculate total amount
-            double totalAmount = 0;
-            for (CartItem ci : cart) {
-                totalAmount += ci.getTotalPrice();
-            }
-
-            // Create and populate Bill object
+            // 2️⃣ Prepare Bill object
             Bill bill = new Bill();
-            // If your Bill model expects customerId, convert accountNo to customerId here:
-            if (accountNo != null) {
-                Integer customerId = customerDAO.getCustomerByAccountNo(accountNo.trim()).getId();
-                bill.setCustomerId(customerId);
-            } else {
-                bill.setCustomerId(null);
+            bill.setBillDate(new Date());
+            bill.setPaymentMethod(paymentMethod);
+            bill.setCreatedBy((String) session.getAttribute("user"));
+
+            if (accountNo != null && !accountNo.trim().isEmpty()) {
+                bill.setAccountNo(accountNo.trim());
+                Customer customer = customerDAO.getCustomerByAccountNo(accountNo.trim());
+                if (customer != null) bill.setCustomerId(customer.getId());
             }
 
-            bill.setPaymentMethod(paymentMethod);
-            bill.setTotal(totalAmount);
-            bill.setBillDate(new java.util.Date());
-
-            // Convert CartItem list to BillItem list and set on bill
+            // 3️⃣ Add BillItems
             List<BillItem> billItems = new ArrayList<>();
+            double total = 0;
             for (CartItem ci : cart) {
                 BillItem bi = new BillItem();
                 bi.setBookId(ci.getItem().getId());
-                bi.setQuantity(ci.getQuantity());
-                bi.setPrice(ci.getItem().getPrice());
+                bi.setQuantity(ci.getQuantity()); // ONLY the cart quantity
+                bi.setPrice(ci.getTotalPrice());
+                total += ci.getTotalPrice();
                 billItems.add(bi);
             }
             bill.setItems(billItems);
+            bill.setTotal(total);
 
-            // Save bill and bill items to DB
-            billDAO.saveBill(bill); // You can modify DAO to only use bill.getItems()
+            // 4️⃣ Save Bill (DAO handles transaction & stock decrement)
+            int billId = billDAO.saveBill(bill);
 
-            // Clear cart after successful checkout
-            req.getSession().removeAttribute("cart");
+            // 5️⃣ Send SMS (optional)
+            Customer customer = customerDAO.getCustomerByAccountNo(accountNo);
+            if (customer != null) {
+                String phone = customer.getPhone();
+                if (phone.startsWith("0")) phone = "+94" + phone.substring(1);
 
-            req.setAttribute("message", "Payment successful! Bill saved.");
+                Twilio.init(SMSUtil.ACCOUNT_SID, SMSUtil.AUTH_TOKEN);
+                Message.creator(new PhoneNumber(phone), new PhoneNumber(SMSUtil.FROM_NUMBER),
+                        "Hello " + customer.getName() + ", your order of Rs." + total +
+                                " has been received. Payment: " + paymentMethod
+                ).create();
+
+            }
+
+            // 6️⃣ Clear cart and set success message
+            session.removeAttribute("cart");
+            session.setAttribute("message", "Checkout successful! Bill ID: " + billId);
+
+            // Redirect to Bill History or newBill page
+            response.sendRedirect("billHistory.jsp");
+
         } catch (Exception e) {
             e.printStackTrace();
-            req.setAttribute("errorMessage", "Payment failed: " + e.getMessage());
+            session.setAttribute("errorMessage", "Checkout failed: " + e.getMessage());
+            response.sendRedirect("newBill.jsp");
         }
-
-        req.getRequestDispatcher("newBill.jsp").forward(req, resp);
     }
 }

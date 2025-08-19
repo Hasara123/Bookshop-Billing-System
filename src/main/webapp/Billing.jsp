@@ -1,169 +1,91 @@
-<%--
-  Created by IntelliJ IDEA.
-  User: Hasara Hithaishi
-  Date: 7/23/2025
-  Time: 1:58 PM
-  To change this template use File | Settings | File Templates.
---%>
 <%@ page contentType="text/html;charset=UTF-8" language="java" %>
+<%@ taglib uri="http://java.sun.com/jsp/jstl/core" prefix="c" %>
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Customer Billing - Pahana Edu</title>
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background-color: #f4f4f4;
-            padding: 20px;
-            display: flex;
-            justify-content: center;
-        }
-        .container {
-            background: white;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 0 10px #ccc;
-            width: 100%;
-            max-width: 600px;
-        }
-        h2 {
-            text-align: center;
-            color: #2c3e50;
-            margin-bottom: 20px;
-        }
-        .form-group {
-            margin-bottom: 15px;
-        }
-        label {
-            font-weight: bold;
-            margin-bottom: 5px;
-            display: block;
-        }
-        input {
-            width: 100%;
-            padding: 10px;
-            border-radius: 5px;
-            border: 1px solid #ccc;
-        }
-        button {
-            width: 100%;
-            padding: 12px;
-            background-color: #27ae60;
-            color: white;
-            font-size: 16px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-        }
-        button:hover {
-            background-color: #219150;
-        }
-        .bill {
-            margin-top: 30px;
-            background-color: #ecf0f1;
-            padding: 20px;
-            border-left: 5px solid #27ae60;
-            display: none;
-        }
-        .bill h3 {
-            margin-top: 0;
-            color: #2c3e50;
-        }
-        .bill p {
-            margin: 5px 0;
-        }
-        .print-btn {
-            background-color: #2980b9;
-            margin-top: 15px;
-        }
-        .print-btn:hover {
-            background-color: #1c5986;
-        }
-
-
-    </style>
+    <title>Billing Page</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet"/>
 </head>
-<body>
+<body class="bg-light">
+<div class="container mt-5">
+    <h1>Billing</h1>
 
-<div class="backButton">
-    <button onclick="window.location.href='DashBoard.jsp'">Back</button>
+    <c:if test="${not empty errorMessage}">
+        <div class="alert alert-danger">${errorMessage}</div>
+    </c:if>
+    <c:if test="${not empty message}">
+        <div class="alert alert-success">${message}</div>
+    </c:if>
+
+    <h3>Available Items</h3>
+    <form method="get" action="billing" class="mb-3">
+        <div class="input-group">
+            <input type="text" name="search" class="form-control" placeholder="Search books by title" value="${param.search}"/>
+            <button type="submit" class="btn btn-outline-secondary">Search</button>
+        </div>
+    </form>
+
+    <form action="billing" method="post" class="row g-2 align-items-center mb-4">
+        <input type="hidden" name="action" value="add"/>
+        <div class="col-auto">
+            <select name="itemId" class="form-select" required>
+                <option value="" disabled selected>Select item</option>
+                <c:forEach var="item" items="${items}">
+                    <option value="${item.id}">${item.title} - Rs.${item.price}</option>
+                </c:forEach>
+            </select>
+        </div>
+        <div class="col-auto">
+            <input type="number" name="quantity" min="1" value="1" class="form-control" required/>
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary">Add to Cart</button>
+        </div>
+    </form>
+
+    <h3>Cart</h3>
+    <c:if test="${empty cart}">
+        <p>Your cart is empty.</p>
+    </c:if>
+    <c:if test="${not empty cart}">
+        <table class="table table-bordered bg-white">
+            <thead class="table-dark">
+            <tr>
+                <th>Title</th>
+                <th>Quantity</th>
+                <th>Price</th>
+                <th>Total</th>
+                <th>Action</th>
+            </tr>
+            </thead>
+            <tbody>
+            <c:set var="grandTotal" value="0" />
+            <c:forEach var="cartItem" items="${cart}">
+                <tr>
+                    <td>${cartItem.item.title}</td>
+                    <td>${cartItem.quantity}</td>
+                    <td>Rs. ${cartItem.item.price}</td>
+                    <td>Rs. ${cartItem.totalPrice}</td>
+                    <td>
+                        <form action="billing" method="post" style="display:inline;">
+                            <input type="hidden" name="action" value="remove"/>
+                            <input type="hidden" name="itemId" value="${cartItem.item.id}"/>
+                            <button type="submit" class="btn btn-sm btn-danger">Remove</button>
+                        </form>
+                    </td>
+                </tr>
+                <c:set var="grandTotal" value="${grandTotal + cartItem.totalPrice}" />
+            </c:forEach>
+            </tbody>
+        </table>
+
+        <h4>Grand Total: Rs. ${grandTotal}</h4>
+
+        <form action="billing" method="post">
+            <input type="hidden" name="action" value="calculateBill"/>
+            <button type="submit" class="btn btn-success">Checkout & Print</button>
+        </form>
+    </c:if>
 </div>
-
-<div class="container">
-    <h2>Customer Billing - Pahana Edu</h2>
-    <div class="form-group">
-        <label for="accountNumber">Account Number</label>
-        <input type="text" id="accountNumber" placeholder="Enter account number" required>
-    </div>
-    <div class="form-group">
-        <label for="name">Customer Name</label>
-        <input type="text" id="name" placeholder="Enter name" required>
-    </div>
-    <div class="form-group">
-        <label for="address">Address</label>
-        <input type="text" id="address" placeholder="Enter address" required>
-    </div>
-    <div class="form-group">
-        <label for="telephone">Telephone Number</label>
-        <input type="tel" id="telephone" placeholder="Enter telephone number" required>
-    </div>
-    <div class="form-group">
-        <label for="units">Units Consumed</label>
-        <input type="number" id="units" placeholder="Enter number of units" required>
-    </div>
-    <button onclick="calculateBill()">Generate Bill</button>
-
-    <div class="bill" id="billSection">
-        <h3>Bill Details</h3>
-        <p><strong>Account Number:</strong> <span id="billAccount"></span></p>
-        <p><strong>Name:</strong> <span id="billName"></span></p>
-        <p><strong>Address:</strong> <span id="billAddress"></span></p>
-        <p><strong>Telephone:</strong> <span id="billTelephone"></span></p>
-        <p><strong>Units Consumed:</strong> <span id="billUnits"></span></p>
-        <p><strong>Total Amount:</strong> Rs. <span id="billAmount"></span></p>
-        <button class="print-btn" onclick="window.print()">Print Bill</button>
-    </div>
-</div>
-
-<script>
-    function calculateBill() {
-        const accountNumber = document.getElementById("accountNumber").value.trim();
-        const name = document.getElementById("name").value.trim();
-        const address = document.getElementById("address").value.trim();
-        const telephone = document.getElementById("telephone").value.trim();
-        const units = parseFloat(document.getElementById("units").value);
-
-        if (!accountNumber || !name || !address || !telephone || isNaN(units) || units < 0) {
-            alert("Please fill out all fields correctly.");
-            return;
-        }
-
-        let amount = 0;
-
-        // Billing logic
-        if (units <= 50) {
-            amount = units * 5;
-        } else if (units <= 100) {
-            amount = (50 * 5) + ((units - 50) * 7);
-        } else {
-            amount = (50 * 5) + (50 * 7) + ((units - 100) * 10);
-        }
-
-        // Fill bill section
-        document.getElementById("billAccount").innerText = accountNumber;
-        document.getElementById("billName").innerText = name;
-        document.getElementById("billAddress").innerText = address;
-        document.getElementById("billTelephone").innerText = telephone;
-        document.getElementById("billUnits").innerText = units;
-        document.getElementById("billAmount").innerText = amount.toFixed(2);
-
-        // Show bill
-        document.getElementById("billSection").style.display = "block";
-    }
-</script>
-
 </body>
 </html>
-

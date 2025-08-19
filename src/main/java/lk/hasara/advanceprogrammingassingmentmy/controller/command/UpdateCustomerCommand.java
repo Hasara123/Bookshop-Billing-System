@@ -2,10 +2,10 @@ package lk.hasara.advanceprogrammingassingmentmy.controller.command;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.ServletException;
 import lk.hasara.advanceprogrammingassingmentmy.dao.CustomerDAO;
 import lk.hasara.advanceprogrammingassingmentmy.model.Customer;
 
-import jakarta.servlet.ServletException;
 import java.io.IOException;
 import java.sql.SQLException;
 
@@ -25,7 +25,7 @@ public class UpdateCustomerCommand implements Command {
         String address = request.getParameter("address");
         String phone = request.getParameter("phone");
 
-        // You might want to fetch the id by accountNo or include it in the form
+        // Fetch existing customer
         Customer existingCustomer = customerDAO.getCustomerByAccountNo(accountNo);
 
         if (existingCustomer != null) {
@@ -37,8 +37,15 @@ public class UpdateCustomerCommand implements Command {
                     phone
             );
             customerDAO.updateCustomer(updatedCustomer);
+
+            // Add flash message
+            request.getSession().setAttribute("successMessage", "Customer updated successfully.");
+        } else {
+            // Optional: flash error message if customer not found
+            request.getSession().setAttribute("errorMessage", "Customer not found.");
         }
 
+        // Redirect to customer list
         response.sendRedirect("customers?action=list");
     }
 }
